@@ -6,8 +6,12 @@
 #define HTTP_URL "http://" HOST ":" PORT
 #define MAX_HISTORY 50
 
+#ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef max
 #define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
 
 static int s_sig_num;
 static void signal_handler(int sig_num) {

@@ -30,5 +30,6 @@ fs.rmSync('../server/static', { recursive: true, force: true });
 fs.rmSync('../server-node/static', { recursive: true, force: true });
 fs.copySync('dist', '../server/static');
 fs.copySync('dist', '../server-node/static');
+fs.copySync('dist', '../server-c/static');
 
 })()

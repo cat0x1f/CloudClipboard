@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.27)
 set(BUILD_OPTIONS)
+set(BUILD_LIB)
 set(EXTRA_C_FILES)
 
 # Zig makes cross-compiling easier and ignores glibc version issue
@@ -20,6 +21,9 @@ project(cloud_clipboard)
 set(CMAKE_CXX_STANDARD 17)
 if (MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++ -static" CACHE STRING "" FORCE)
+endif ()
+if (WIN32)
+    list(APPEND BUILD_LIB ws2_32)
 endif ()
 
 include(FetchContent)
@@ -52,3 +56,4 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 target_compile_options(${PROJECT_NAME} PRIVATE -Os ${BUILD_OPTIONS})
+target_link_libraries(${PROJECT_NAME} ${BUILD_LIB})
