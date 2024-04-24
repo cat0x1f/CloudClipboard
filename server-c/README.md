@@ -6,6 +6,8 @@
 > [!TIP]
 > 目前只做了文本剪贴板的功能，房间与文件传输没有实现
 
+测试版下载地址: [nightly.link](https://nightly.link/xfangfang/cloud-clipboard/workflows/c/c)
+
 ### 开发
 
 1. 将静态文件夹放置在此目录

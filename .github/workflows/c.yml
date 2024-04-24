@@ -36,7 +36,7 @@ jobs:
         if: ${{ !steps.restore-cache.outputs.cache-hit }}
         with:
           path: server/static
-          key: ${{ steps.restore-cache.outputs.CLIENT_CACHE_KEY }}
+          key: ${{ steps.cache-key.outputs.CLIENT_CACHE_KEY }}
       - name: Upload result
         uses: actions/upload-artifact@v4
         with:
@@ -49,36 +49,47 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - x86_64-windows-gnu
-          - x86-windows-gnu
-          - aarch64-windows-gnu
-          - x86_64-linux-gnu
-          - x86-linux-gnu
-          - aarch64-linux-gnu
-          - x86_64-linux-musl
-          - x86-linux-musl
-          - aarch64-linux-musl
-          - x86_64-macos.11.0-none
-          - aarch64-macos.11.0-none
-          - mipsel-linux-musl
         include:
-          - { target: x86_64-windows-gnu, ext: ".exe" }
-          - { target: x86-windows-gnu, ext: ".exe" }
-          - { target: aarch64-windows-gnu, ext: ".exe" }
+          - { target: x86_64-windows-gnu,      upx: "upx", ext: ".exe" }
+          - { target: x86-windows-gnu,         upx: "upx", ext: ".exe" }
+          - { target: aarch64-windows-gnu,     upx: "ls",  ext: ".exe" }
+          - { target: x86_64-linux-gnu,        upx: "upx" }
+          - { target: x86-linux-gnu,           upx: "upx" }
+          - { target: aarch64-linux-gnu,       upx: "upx" }
+          - { target: x86_64-linux-musl,       upx: "upx" }
+          - { target: x86-linux-musl,          upx: "upx" }
+          - { target: aarch64-linux-musl ,     upx: "upx" }
+          - { target: mipsel-linux-musl,       upx: "upx --lzma" }
+          - { target: x86_64-macos.11.0-none,  upx: "ls" }
+          - { target: aarch64-macos.11.0-none, upx: "ls" }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         name: static
+      - name: strip static
+        run: |
+          find static -name "*.br" -type f -delete
+          find static -name "*.css" -type f -delete
+          find static -name "*.js" -type f -delete
+          find static -name "*.html" -type f -delete
+          find static -name "*.svg" -type f -delete
+      - name: Install UPX
+        if: matrix.upx != 'ls'
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          install-only: true
       - name: Build executable
         run: |
           mv static server-c/
           mkdir -p server-c/build
           cd server-c/build
-          cmake -DZIG_TARGET=${{ matrix.target }} -DPACKAGE_FILE=ON -DCMAKE_BUILD_TYPE=Release ..
+          cmake -DZIG_TARGET=${{ matrix.target }} -DPACKAGE_FILE=ON -DCMAKE_BUILD_TYPE=MinSizeRel ..
           cmake --build .
+          sudo apt-get install llvm --no-install-recommends
+          llvm-strip cloud_clipboard${{ matrix.ext }}
+          upx --version
+          ${{ matrix.upx }} cloud_clipboard${{ matrix.ext }}
           tar -czvf cloud_clipboard.tar.gz cloud_clipboard${{ matrix.ext }}
-
       - name: Upload result
         uses: actions/upload-artifact@v4
         with:

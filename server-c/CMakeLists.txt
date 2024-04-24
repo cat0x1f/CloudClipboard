@@ -55,5 +55,5 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         ${mongoose_SOURCE_DIR}
 )
 
-target_compile_options(${PROJECT_NAME} PRIVATE -Os ${BUILD_OPTIONS})
+target_compile_options(${PROJECT_NAME} PRIVATE ${BUILD_OPTIONS})
 target_link_libraries(${PROJECT_NAME} ${BUILD_LIB})
