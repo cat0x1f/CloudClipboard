@@ -27,7 +27,7 @@ endif ()
 
 include(FetchContent)
 FetchContent_Declare(mongoose GIT_REPOSITORY https://github.com/cesanta/mongoose.git
-        GIT_TAG 52997c6c5170050148d23436d2ed398811f48c30) # 7.13
+        GIT_TAG 7.13)
 FetchContent_MakeAvailable(mongoose)
 
 if (PACKAGE_FILE)
@@ -54,5 +54,5 @@ target_include_directories(${PROJECT_NAME} PUBLIC
         ${mongoose_SOURCE_DIR}
 )
 
-target_compile_options(${PROJECT_NAME} PRIVATE ${BUILD_OPTIONS})
+target_compile_options(${PROJECT_NAME} PRIVATE ${BUILD_OPTIONS} -DMG_ENABLE_DIRLIST=0 -DMG_ENABLE_CUSTOM_LOG=1)
 target_link_libraries(${PROJECT_NAME} ${BUILD_LIB})
