@@ -1,10 +1,7 @@
 #include <mongoose.h>
 #include "data.h"
+#include "utils.h"
 
-#define HOST "0.0.0.0"
-#define PORT "8123"
-
-#define HTTP_URL "http://" HOST ":" PORT
 #define SERVER_VERSION "c-1.2.0"
 
 // HTTP response
@@ -142,7 +139,18 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
 }
 
 static void timer_cb(void *arg) {
+    (void)arg;
     check_file_expire();
+}
+
+static void http_listen(const char* url, void * arg) {
+    struct mg_mgr *mgr = (struct mg_mgr *) arg;
+    if (mg_http_listen(mgr, url, fn, mgr) == NULL)
+    {
+        MG_ERROR(("Cannot listen on %s.", url));
+    } else {
+        MG_INFO(("Starting web server on %s", url));
+    }
 }
 
 int main(void) {
@@ -160,21 +168,15 @@ int main(void) {
             .text_length    = 4096,
             .file_size      = 128 * 1024 * 1024,
             .chunk_size     = 512 * 1024,
-            .expire_time    = 60,
+            .expire_time    = 3600,
             .upload_timeout = 60,
             .max_history    = 10,
     };
-    init_data(&option);
-
     mg_log_set(MG_LL_INFO);
     mg_mgr_init(&mgr);
-    if (mg_http_listen(&mgr, HTTP_URL, fn, &mgr) == NULL) {
-        MG_ERROR(("Cannot listen on %s.", HTTP_URL));
-        mg_mgr_free(&mgr);
-        exit(EXIT_FAILURE);
-    }
+    loadConfig(&option, http_listen, &mgr);
+    init_data(&option);
     mg_timer_add(&mgr, 10000, MG_TIMER_REPEAT, timer_cb, NULL);
-    MG_INFO(("Starting web server on %s", HTTP_URL));
     while (s_sig_num == 0) {
         mg_mgr_poll(&mgr, 50);
     }

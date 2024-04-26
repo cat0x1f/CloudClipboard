@@ -1,4 +1,5 @@
 #include <mongoose.h>
+#include "utils.h"
 
 static mg_pfn_t s_log_func = mg_pfn_stdout;
 static void *s_log_func_param = NULL;
@@ -49,4 +50,38 @@ void mg_log(const char *fmt, ...) {
     mg_vxprintf(s_log_func, s_log_func_param, fmt, &ap);
     va_end(ap);
     logs("\n", 1);
+}
+
+void loadConfig(data_node_option *option, void (*cb)(const char*, void *), void * arg) {
+    struct stat st = {0};
+    bool empty_host = true;
+    char buf[256];
+    long server_port = 8123;
+    if (stat(CONFIG_FILE, &st) != -1) {
+        // load config
+        struct mg_str config = mg_file_read(&mg_fs_posix, CONFIG_FILE);
+        option->text_length = mg_json_get_long(config, "$.text.limit", 4096);
+        option->expire_time = mg_json_get_long(config, "$.file.expire", 3600);
+        option->chunk_size = mg_json_get_long(config, "$.file.chunk", 512 * 1024);
+        option->file_size = mg_json_get_long(config, "$.file.limit", 128 * 1024 * 1024);
+        option->upload_timeout = mg_json_get_long(config, "$.file.timeout", 60); // file upload timeout
+        option->max_history = mg_json_get_long(config, "$.server.history", 10);
+        server_port = mg_json_get_long(config, "$.server.port", 8123);
+
+        struct mg_str val;
+        size_t ofs = 0;
+        while ((ofs = mg_json_next(mg_json_get_tok(config, "$.server.host"), ofs, NULL, &val)) > 0) {
+            if (memchr(val.ptr, ':', val.len) == NULL) {
+                mg_snprintf(buf, 256, "http://%.*s:%d", (int) val.len - 2, mg_json_get_str(val, "$"), server_port);
+            } else {
+                mg_snprintf(buf, 256, "http://[%.*s]:%d", (int) val.len - 2, mg_json_get_str(val, "$"), server_port);
+            }
+            empty_host = false;
+            cb(buf, arg);
+        }
+    }
+    if (empty_host) {
+        mg_snprintf(buf, 256, "http://0.0.0.0:%d", server_port);
+        cb(buf, arg);
+    }
 }

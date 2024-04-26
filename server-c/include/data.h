@@ -18,8 +18,8 @@ typedef struct CacheFile {
     char name[MAX_PATH + 1];
     size_t size;
     size_t expire;
-    int8_t available;
-    int8_t expired;
+    bool available;
+    bool expired;
     FILE *fp;
 } CacheFile;
 
@@ -46,12 +46,12 @@ typedef struct data_node {
 
 typedef struct data_node_option {
     const char *storage_path;
-    int32_t text_length;
-    int32_t chunk_size;
-    int32_t file_size;
-    int32_t expire_time;
-    int32_t upload_timeout;
-    int32_t max_history;
+    long text_length;
+    long chunk_size;
+    long file_size;
+    long expire_time;
+    long upload_timeout;
+    long max_history;
 } data_node_option;
 
 extern data_node *head;
@@ -61,7 +61,7 @@ void init_data(data_node_option *option);
 
 void destroy_data();
 
-int8_t delete_node_by_index(uint32_t index);
+bool delete_node_by_index(uint32_t index);
 
 void delete_node_by_ptr(data_node *node);
 

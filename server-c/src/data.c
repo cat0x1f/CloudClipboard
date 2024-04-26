@@ -71,8 +71,8 @@ void destroy_data() {
     }
 }
 
-int8_t delete_node_by_index(uint32_t index) {
-    if (index == 0) return 0;
+bool delete_node_by_index(uint32_t index) {
+    if (index == 0) return false;
     MG_INFO(("Delete node: %u", index));
     data_node *node = head->next;
     data_node *last = head;
@@ -84,9 +84,9 @@ int8_t delete_node_by_index(uint32_t index) {
         }
         last->next = node->next;
         delete_node_by_ptr(node);
-        return 1;
+        return true;
     }
-    return 0;
+    return false;
 }
 
 void check_file_expire() {
@@ -96,7 +96,7 @@ void check_file_expire() {
         if (node->format == DATA_FORMAT_FILE) {
             if (node->u.file->expired == 0 && node->u.file->available && node->u.file->expire < now) {
                 // expired file: only remove file
-                node->u.file->expired = 1;
+                node->u.file->expired = true;
                 char path[MAX_PATH];
                 mg_snprintf(path, MAX_PATH, "%s/%s", data_option->storage_path, node->u.file->id);
                 remove(path);
@@ -142,8 +142,8 @@ data_node *new_file(struct mg_str *name) {
     node->u.file = (CacheFile *) malloc(sizeof(CacheFile));
     strncpy(node->u.file->name, name->ptr, len);
     node->u.file->name[len] = '\0';
-    node->u.file->available = 0;
-    node->u.file->expired = 0;
+    node->u.file->available = false;
+    node->u.file->expired = true;
     node->u.file->expire = time(NULL) + data_option->expire_time;
     node->u.file->size = 0;
     node->u.file->fp = NULL;
