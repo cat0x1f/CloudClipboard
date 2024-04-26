@@ -3,7 +3,9 @@
 #include <stdio.h>
 #include <mongoose.h>
 
+#ifndef MAX_PATH
 #define MAX_PATH 256
+#endif
 #define FILE_ID_LEN 32
 
 #ifndef min
@@ -17,6 +19,7 @@ typedef struct CacheFile {
     char id[FILE_ID_LEN + 1];
     char name[MAX_PATH + 1];
     size_t size;
+    size_t upload;
     size_t expire;
     bool available;
     bool expired;

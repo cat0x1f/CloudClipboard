@@ -6,9 +6,7 @@
 > [!TIP]
 > 目前只做了文本剪贴板和普通文件上传，房间与图片等内容没有实现
 
-一些特殊的处理： 
-1. 退出时清空全部内容
-2. Windows 下文件缓存目录为执行目录，其他平台为 `/tmp/cloud_clipboard`
+文件缓存目录为操作系统临时目录, 对 Windows 来说是 `C:\Users\用户名\AppData\Local\Temp\cloud-clipboard`, 其他系统是 `/tmp/cloud-clipboard`
 
 测试版下载地址: [nightly.link](https://nightly.link/xfangfang/cloud-clipboard/workflows/c/c)
 
@@ -23,7 +21,7 @@ cmake --build build
 
 ### 额外
 
-通过使用 `zig cc` 很容易就可以交叉编译到其他平台:
+交叉编译到其他平台:
 
 ```shell
 # 示例：交叉编译到 mipsel 平台 (PACKAGE_FILE=ON 会将静态文件打包到可执行文件中)
@@ -34,12 +32,12 @@ cmake --build build
 ### todo
 
 - [x] 文件
-- [ ] 持久化储存
+- [x] 持久化储存
 - [x] 删除
 - [x] 加载配置文件
 - [ ] 房间
+- [ ] 密码
 - [ ] 图片
+- [ ] https
 - [ ] 多线程上传
-
-
-
+- [ ] 显示连接设备

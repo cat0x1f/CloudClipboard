@@ -159,12 +159,10 @@ int main(void) {
     signal(SIGINT, signal_handler);
     signal(SIGTERM, signal_handler);
 
+    char storage_path[MAX_PATH];
+    getTempPath(storage_path);
     data_node_option option = {
-#ifdef _WIN32
-            .storage_path   = "./cloud_clipboard_storage",
-#else
-            .storage_path   = "/tmp/cloud_clipboard",
-#endif
+            .storage_path   = storage_path,
             .text_length    = 4096,
             .file_size      = 128 * 1024 * 1024,
             .chunk_size     = 512 * 1024,

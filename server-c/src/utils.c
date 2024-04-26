@@ -1,6 +1,10 @@
 #include <mongoose.h>
 #include "utils.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 static mg_pfn_t s_log_func = mg_pfn_stdout;
 static void *s_log_func_param = NULL;
 
@@ -84,4 +88,13 @@ void loadConfig(data_node_option *option, void (*cb)(const char*, void *), void 
         mg_snprintf(buf, 256, "http://0.0.0.0:%d", server_port);
         cb(buf, arg);
     }
+}
+
+void getTempPath(char* buf) {
+#ifdef _WIN32
+    DWORD answer = GetTempPathA(MAX_PATH, buf);
+    mg_snprintf(buf + answer, MAX_PATH - answer, "cloud_clipboard");
+#else
+    mg_snprintf(buf, MAX_PATH, "/tmp/cloud_clipboard");
+#endif
 }
