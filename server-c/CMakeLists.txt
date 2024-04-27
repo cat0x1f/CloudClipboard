@@ -26,15 +26,6 @@ if (WIN32)
     list(APPEND APP_BUILD_LIB ws2_32)
 endif ()
 
-include(FetchContent)
-FetchContent_Declare(mongoose GIT_REPOSITORY https://github.com/cesanta/mongoose.git
-        GIT_TAG 7.13)
-FetchContent_MakeAvailable(mongoose)
-
-FetchContent_Declare(stb GIT_REPOSITORY https://github.com/nothings/stb.git
-        GIT_TAG ae721c50eaf761660b4f90cc590453cdb0c2acd0)
-FetchContent_MakeAvailable(stb)
-
 if (PACKAGE_FILE)
     list(APPEND APP_BUILD_OPTIONS -DPACKAGE_FILE -DMG_ENABLE_PACKED_FS=1)
     list(APPEND APP_EXTRA_C_FILES ${CMAKE_BINARY_DIR}/static.c)
@@ -49,16 +40,8 @@ else ()
 endif ()
 
 file(GLOB_RECURSE MAIN_SRC ${CMAKE_SOURCE_DIR}/src/*.c)
-add_executable(${PROJECT_NAME}
-        ${MAIN_SRC}
-        ${APP_EXTRA_C_FILES}
-        ${mongoose_SOURCE_DIR}/mongoose.c)
-
-target_include_directories(${PROJECT_NAME} PUBLIC
-        ${CMAKE_SOURCE_DIR}/include
-        ${mongoose_SOURCE_DIR}
-        ${stb_SOURCE_DIR}
-)
+add_executable(${PROJECT_NAME} ${MAIN_SRC} ${APP_EXTRA_C_FILES})
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/include)
 
 if(ZIG_TARGET_ARCH MATCHES "mips")
     list(APPEND APP_BUILD_OPTIONS -msoft-float)
