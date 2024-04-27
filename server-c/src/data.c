@@ -108,7 +108,8 @@ void load_data() {
             node->index = id;
             node_index = max(node_index, id + 1);
             node->next = NULL;
-            node->u.file = (CacheFile *) malloc(sizeof(CacheFile));
+            long thumbnail_len = mg_json_get_long(val, "$.thumbnail_len", 0);
+            node->u.file = (CacheFile *) malloc(sizeof(CacheFile) + thumbnail_len + 1);
             strncpy(node->u.file->name, name.ptr, min(name.len, MAX_PATH));
             node->u.file->name[min(name.len, MAX_PATH)] = '\0';
             strncpy(node->u.file->id, cache.ptr, min(cache.len, FILE_ID_LEN));
@@ -119,7 +120,7 @@ void load_data() {
             node->u.file->upload = node->u.file->expire;
             node->u.file->size = mg_json_get_long(val, "$.size", 0);
             node->u.file->fp = NULL;
-            node->u.file->thumbnail_len = mg_json_get_long(val, "$.thumbnail_len", 0);
+            node->u.file->thumbnail_len = thumbnail_len;
             if (node->u.file->thumbnail_len) {
                 strncpy(node->u.file->thumbnail, mg_json_get_str(val, "$.thumbnail"), node->u.file->thumbnail_len);
                 node->u.file->thumbnail[node->u.file->thumbnail_len] = '\0';
