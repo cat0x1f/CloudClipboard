@@ -5,7 +5,7 @@
 #define SERVER_VERSION "c-1.2.0"
 
 // HTTP response
-#define JSON_SUCCESS    "{\"code\": 0}"
+#define JSON_SUCCESS    "{\"code\": 200}"
 #define JSON_FAILED     "{\"code\":500}"
 #define SERVER_FMT      "{\"server\":\"ws://%.*s/push\"}"
 #define FILE_UPLOAD_FMT "{\"code\":%d,\"result\":{\"uuid\":\"%.32s\"}}"
@@ -13,6 +13,7 @@
 #define REVOKE_FMT      "{\"event\":\"revoke\",\"data\":{\"id\":%u}}"
 #define TEXT_FMT        "{\"event\":\"receive\",\"data\":{\"id\":%u,\"type\":\"text\",\"content\":%m}}"
 #define FILE_FMT        "{\"event\":\"receive\",\"data\":{\"id\":%u,\"type\":\"file\",\"name\":%m,\"size\":%d,\"cache\":\"%s\",\"expire\":%d}}"
+#define IMAGE_FMT       "{\"event\":\"receive\",\"data\":{\"id\":%u,\"type\":\"file\",\"name\":%m,\"size\":%d,\"cache\":\"%s\",\"expire\":%d,\"thumbnail\":\"%s\"}}"
 #define CONFIG_FMT      "{\"event\":\"config\",\"data\":{\"version\":\"" SERVER_VERSION "\", \"text\":{\"limit\": %d},\"file\":{\"expire\":%d,\"chunk\":%d,\"limit\":%d}}}"
 
 #define JSON_REPLY(fmt, ...) mg_http_reply(c, 200, s_json_header, fmt "\n", ##__VA_ARGS__);
@@ -37,10 +38,17 @@ void send_data(data_node *node, void *data) {
     if (node->format == DATA_FORMAT_TEXT) {
         WS_REPLY(TEXT_FMT, node->index, MG_ESC(node->u.text->data));
     } else if (node->format == DATA_FORMAT_FILE && node->u.file->available) {
-        WS_REPLY(FILE_FMT, node->index, MG_ESC(node->u.file->name), node->u.file->size, node->u.file->id,
-                 node->u.file->expire);
+        if (node->u.file->thumbnail_len) {
+            WS_REPLY(IMAGE_FMT, node->index, MG_ESC(node->u.file->name), node->u.file->size, node->u.file->id,
+                     node->u.file->expire, node->u.file->thumbnail);
+        } else {
+            WS_REPLY(FILE_FMT, node->index, MG_ESC(node->u.file->name), node->u.file->size, node->u.file->id,
+                     node->u.file->expire);
+        }
     }
 }
+
+char buf_path[MAX_PATH];
 
 // HTTP request handler function
 static void fn(struct mg_connection *c, int ev, void *ev_data) {
@@ -56,14 +64,14 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
             // Websocket connection, which will receive MG_EV_WS_MSG events.
             mg_ws_upgrade(c, hm, NULL);
         } else if (mg_match(hm->uri, mg_str("/revoke/*"), caps)) {
-            char buf[11];
-            mg_snprintf(buf, sizeof(buf), "%.*s", (int) caps[0].len, caps[0].ptr);
-            uint32_t res = strtoul(buf, NULL, 10);
+            mg_snprintf(buf_path, sizeof(buf_path), "%.*s", (int) caps[0].len, caps[0].ptr);
+            uint32_t res = strtoul(buf_path, NULL, 10);
             MG_INFO(("Request revoke[%u] from %M", res, CLIENT_REQUEST));
             if (delete_node_by_index(res) == 0) {
                 JSON_REPLY(JSON_FAILED);
                 return;
             }
+            save_data();
             JSON_REPLY(JSON_SUCCESS);
             // broadcast to all websocket clients
             struct mg_mgr *mgr = (struct mg_mgr *) c->fn_data;
@@ -96,8 +104,13 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
             struct mg_mgr *mgr = (struct mg_mgr *) c->fn_data;
             for (c = mgr->conns; c != NULL; c = c->next) {
                 if (!c->is_websocket) continue;
-                WS_REPLY(FILE_FMT, node->index, MG_ESC(node->u.file->name), node->u.file->size, node->u.file->id,
-                         node->u.file->expire);
+                if (node->u.file->thumbnail_len) {
+                    WS_REPLY(IMAGE_FMT, node->index, MG_ESC(node->u.file->name), node->u.file->size, node->u.file->id,
+                             node->u.file->expire, node->u.file->thumbnail);
+                } else {
+                    WS_REPLY(FILE_FMT, node->index, MG_ESC(node->u.file->name), node->u.file->size, node->u.file->id,
+                             node->u.file->expire);
+                }
             }
         } else if (mg_match(hm->uri, mg_str("/upload"), NULL)) {
             MG_INFO(("Start upload file from %M", CLIENT_REQUEST));
@@ -107,12 +120,11 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
             JSON_REPLY(FILE_UPLOAD_FMT, 200, node->u.file->id);
         } else if (mg_match(hm->uri, mg_str("/file/*"), caps)) {
             // Download file
-            char path[MAX_PATH];
             struct mg_http_serve_opts sopts;
             memset(&sopts, 0, sizeof(sopts));
-            mg_snprintf(path, MAX_PATH, "%s/%.*s", data_option->storage_path, (int) caps[0].len, caps[0].ptr);
-            MG_INFO(("Download file: [%s] from %M", path, CLIENT_REQUEST));
-            mg_http_serve_file(c, hm, path, &sopts);
+            mg_snprintf(buf_path, MAX_PATH, "%s/%.*s", data_option->storage_path, (int) caps[0].len, caps[0].ptr);
+            MG_INFO(("Download file: [%s] from %M", buf_path, CLIENT_REQUEST));
+            mg_http_serve_file(c, hm, buf_path, &sopts);
         } else {
             // Serve static content
 #ifdef PACKAGE_FILE

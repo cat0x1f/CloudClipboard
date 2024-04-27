@@ -1,4 +1,12 @@
 #include <mongoose.h>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+#define STB_IMAGE_RESIZE_IMPLEMENTATION
+#include <stb_image_resize2.h>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_image_write.h>
+
 #include "utils.h"
 
 #ifdef _WIN32
@@ -97,4 +105,51 @@ void getTempPath(char* buf) {
 #else
     mg_snprintf(buf, MAX_PATH, "/tmp/cloud_clipboard");
 #endif
+}
+
+#define BUF_THUMB_LEN 4000
+char buf_thumb[BUF_THUMB_LEN];
+unsigned char image_buf[2000];
+
+static void jpeg_write(void *context, void *data, int len) {
+    size_t *base64_len = (size_t *) context;
+    if (*base64_len + len > sizeof(image_buf)) {
+        MG_ERROR(("Image buffer overflow"));
+        return;
+    }
+    memcpy(image_buf + *base64_len, data, len);
+    *base64_len += len;
+}
+
+const char *create_thumbnail(const char *path, size_t* len) {
+    int width, height, channels;
+    unsigned char *image = stbi_load(path, &width, &height, &channels, 0);
+    if (image == NULL) return NULL;
+
+    *len = mg_snprintf(buf_thumb, BUF_THUMB_LEN, "data:image/jpeg;base64,");
+    size_t jpeg_len   = 0;
+
+    if (max(width, height) > 64) {
+        float ratio = 64.0f / max(width, height);
+        int new_width = width * ratio;
+        int new_height = height * ratio;
+        unsigned char *resized_image = malloc(new_width * new_height * channels);
+        if (resized_image == NULL) goto free_image;
+        if (!stbir_resize_uint8_srgb(image, width, height, 0, resized_image, new_width, new_height, 0, channels)) return false;
+        stbi_write_jpg_to_func(jpeg_write, &jpeg_len, new_width, new_height, channels, resized_image, 70);
+        free(resized_image);
+    } else {
+        stbi_write_jpg_to_func(jpeg_write, &jpeg_len, width, height, channels, image, 70);
+    }
+
+    *len += mg_base64_encode(image_buf, jpeg_len, buf_thumb + *len, BUF_THUMB_LEN - *len);
+    if (*len == 0) {
+        MG_ERROR(("Base64 encode failed"));
+        return NULL;
+    }
+
+    return buf_thumb;
+    free_image:
+    stbi_image_free(image);
+    return NULL;
 }

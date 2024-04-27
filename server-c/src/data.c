@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "data.h"
+#include "utils.h"
 
 data_node *head;
 data_node_option *data_option;
@@ -20,6 +21,7 @@ void save_data() {
             if (tail->u.file->available) {
                 len += MAX_PATH + FILE_ID_LEN + 93; // file node
                 len += MAX_PATH + FILE_ID_LEN + 88; // file list
+                len += tail->u.file->thumbnail_len;
             }
         }
         tail = tail->next;
@@ -52,9 +54,15 @@ void save_data() {
         } else if (tail->format == DATA_FORMAT_FILE) {
             if (tail->u.file->available) {
                 pos += mg_snprintf(buf + pos, len - pos,
-                                   "{\"id\":%d,\"type\":\"file\",\"name\":%m,\"size\":%d,\"cache\":\"%s\",\"expire\":%d},",
+                                   "{\"id\":%d,\"type\":\"file\",\"name\":%m,\"size\":%d,\"cache\":\"%s\",\"expire\":%d",
                                    tail->index, MG_ESC(tail->u.file->name), tail->u.file->size, tail->u.file->id,
                                    tail->u.file->expire);
+                if (tail->u.file->thumbnail_len) {
+                    pos += mg_snprintf(buf + pos, len - pos, ",\"thumbnail_len\": %d,\"thumbnail\":\"%s\"},",
+                                       tail->u.file->thumbnail_len, tail->u.file->thumbnail);
+                } else {
+                    pos += mg_snprintf(buf + pos, len - pos, "},");
+                }
             }
         }
         tail = tail->next;
@@ -84,6 +92,7 @@ void load_data() {
             data_node *node = (data_node *) malloc(sizeof(data_node));
             node->format = DATA_FORMAT_TEXT;
             node->index = id;
+            node_index = max(node_index, id + 1);
             node->next = NULL;
             node->u.text = (CacheText *) malloc(sizeof(CacheText) + text.len + 1);
             node->u.text->len = text.len;
@@ -97,6 +106,7 @@ void load_data() {
             data_node *node = (data_node *) malloc(sizeof(data_node));
             node->format = DATA_FORMAT_FILE;
             node->index = id;
+            node_index = max(node_index, id + 1);
             node->next = NULL;
             node->u.file = (CacheFile *) malloc(sizeof(CacheFile));
             strncpy(node->u.file->name, name.ptr, min(name.len, MAX_PATH));
@@ -109,6 +119,11 @@ void load_data() {
             node->u.file->upload = node->u.file->expire;
             node->u.file->size = mg_json_get_long(val, "$.size", 0);
             node->u.file->fp = NULL;
+            node->u.file->thumbnail_len = mg_json_get_long(val, "$.thumbnail_len", 0);
+            if (node->u.file->thumbnail_len) {
+                strncpy(node->u.file->thumbnail, mg_json_get_str(val, "$.thumbnail"), node->u.file->thumbnail_len);
+                node->u.file->thumbnail[node->u.file->thumbnail_len] = '\0';
+            }
             append_to_tail(node);
         }
     }
@@ -271,6 +286,7 @@ data_node *new_file(struct mg_str *name) {
     node->u.file->name[len] = '\0';
     node->u.file->available = false;
     node->u.file->expired = true;
+    node->u.file->thumbnail_len = 0;
     node->u.file->upload = time(NULL);
     node->u.file->expire = node->u.file->upload + data_option->expire_time;
     node->u.file->size = 0;
@@ -304,6 +320,17 @@ data_node *append_to_file(struct mg_str *id, struct mg_str *chunk) {
     return node;
 }
 
+void save_thumbnail(data_node *node, const char *thumbnail, size_t len) {
+    if (!node || !thumbnail) return;
+    if (node->format != DATA_FORMAT_FILE) return;
+    void *new_node = realloc(node->u.file, sizeof(CacheFile) + len + 1);
+    if (!new_node) return;
+    node->u.file = new_node;
+    node->u.file->thumbnail_len = len;
+    strncpy(node->u.file->thumbnail, thumbnail, len);
+    node->u.file->thumbnail[len] = '\0';
+}
+
 data_node *add_file(struct mg_str *id) {
     data_node *node = find_file_node_by_id(id);
     if (!node) return NULL;
@@ -311,6 +338,11 @@ data_node *add_file(struct mg_str *id) {
     fclose(node->u.file->fp);
     node->u.file->fp = NULL;
     node->u.file->available = true;
+    size_t len;
+    char path[MAX_PATH];
+    mg_snprintf(path, MAX_PATH, "%s/%s", data_option->storage_path, node->u.file->id);
+    const char *thumbnail = create_thumbnail(path, &len);
+    if (thumbnail) save_thumbnail(node, thumbnail, len);
     save_data();
     return node;
 }

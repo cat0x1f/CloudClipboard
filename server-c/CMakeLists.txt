@@ -31,6 +31,10 @@ FetchContent_Declare(mongoose GIT_REPOSITORY https://github.com/cesanta/mongoose
         GIT_TAG 7.13)
 FetchContent_MakeAvailable(mongoose)
 
+FetchContent_Declare(stb GIT_REPOSITORY https://github.com/nothings/stb.git
+        GIT_TAG ae721c50eaf761660b4f90cc590453cdb0c2acd0)
+FetchContent_MakeAvailable(stb)
+
 if (PACKAGE_FILE)
     list(APPEND APP_BUILD_OPTIONS -DPACKAGE_FILE -DMG_ENABLE_PACKED_FS=1)
     list(APPEND APP_EXTRA_C_FILES ${CMAKE_BINARY_DIR}/static.c)
@@ -53,6 +57,7 @@ add_executable(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} PUBLIC
         ${CMAKE_SOURCE_DIR}/include
         ${mongoose_SOURCE_DIR}
+        ${stb_SOURCE_DIR}
 )
 
 if(ZIG_TARGET_ARCH MATCHES "mips")

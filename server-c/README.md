@@ -4,7 +4,7 @@
 [cloud-clipboard](https://github.com/TransparentLC/cloud-clipboard) 服务端的 c 实现
 
 > [!TIP]
-> 目前只做了文本剪贴板和普通文件上传，房间与图片等内容没有实现
+> 目前实现了文本剪贴板和文件上传，房间与密码等内容没有实现
 
 文件缓存目录为操作系统临时目录, 对 Windows 来说是 `C:\Users\用户名\AppData\Local\Temp\cloud-clipboard`, 其他系统是 `/tmp/cloud-clipboard`
 
@@ -35,9 +35,9 @@ cmake --build build
 - [x] 持久化储存
 - [x] 删除
 - [x] 加载配置文件
+- [x] 图片
 - [ ] 房间
 - [ ] 密码
-- [ ] 图片
 - [ ] https
 - [ ] 多线程上传
 - [ ] 显示连接设备

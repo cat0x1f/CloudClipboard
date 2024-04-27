@@ -24,6 +24,8 @@ typedef struct CacheFile {
     bool available;
     bool expired;
     FILE *fp;
+    size_t thumbnail_len;
+    char thumbnail[0];
 } CacheFile;
 
 typedef struct CacheText {
@@ -61,6 +63,8 @@ extern data_node *head;
 extern data_node_option *data_option;
 
 void init_data(data_node_option *option);
+
+void save_data();
 
 void destroy_data();
 
