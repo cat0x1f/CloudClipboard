@@ -2761,7 +2761,7 @@ static int getrange(struct mg_str *s, size_t *a, size_t *b) {
 }
 
 void mg_http_serve_file(struct mg_connection *c, struct mg_http_message *hm,
-                        const char *path,
+                        const char *real, const char *path,
                         const struct mg_http_serve_opts *opts) {
   char etag[64], tmp[MG_PATH_MAX];
   struct mg_fs *fs = opts->fs == NULL ? &mg_fs_posix : opts->fs;
@@ -2769,7 +2769,7 @@ void mg_http_serve_file(struct mg_connection *c, struct mg_http_message *hm,
   size_t size = 0;
   time_t mtime = 0;
   struct mg_str *inm = NULL;
-  struct mg_str mime = guess_content_type(mg_str(path), opts->mime_types);
+  struct mg_str mime = guess_content_type(mg_str(real), opts->mime_types);
   bool gzip = false;
 
   if (path != NULL) {
@@ -3057,7 +3057,7 @@ void mg_http_serve_dir(struct mg_connection *c, struct mg_http_message *hm,
              mg_globmatch(sp, strlen(sp), path, strlen(path))) {
     mg_http_serve_ssi(c, opts->root_dir, path);
   } else {
-    mg_http_serve_file(c, hm, path, opts);
+    mg_http_serve_file(c, hm, path, path, opts);
   }
 }
 

@@ -18,6 +18,10 @@ if (ZIG_TARGET)
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/zig.toolchain.cmake")
 endif ()
 
+if (CMAKE_BUILD_TYPE STREQUAL Debug)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined")
+endif ()
+
 project(cloud_clipboard)
 if (MINGW)
     set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static" CACHE STRING "" FORCE)
@@ -32,7 +36,7 @@ if (PACKAGE_FILE)
     add_custom_command(
         OUTPUT ${CMAKE_BINARY_DIR}/static.c
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
-        COMMAND ${ZIG} cc -o ${CMAKE_BINARY_DIR}/pack ${mongoose_SOURCE_DIR}/test/pack.c
+        COMMAND ${ZIG} cc -o ${CMAKE_BINARY_DIR}/pack ${CMAKE_SOURCE_DIR}/tools/pack.c
         COMMAND ${CMAKE_BINARY_DIR}/pack static/* static/css/* static/js/* static/fonts/* > ${CMAKE_BINARY_DIR}/static.c
     )
 else ()

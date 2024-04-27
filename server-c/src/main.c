@@ -120,11 +120,13 @@ static void fn(struct mg_connection *c, int ev, void *ev_data) {
             JSON_REPLY(FILE_UPLOAD_FMT, 200, node->u.file->id);
         } else if (mg_match(hm->uri, mg_str("/file/*"), caps)) {
             // Download file
+            data_node *node = find_file_node_by_id(&caps[0]);
+            NODE_CHECK(node);
             struct mg_http_serve_opts sopts;
             memset(&sopts, 0, sizeof(sopts));
             mg_snprintf(buf_path, MAX_PATH, "%s/%.*s", data_option->storage_path, (int) caps[0].len, caps[0].ptr);
             MG_INFO(("Download file: [%s] from %M", buf_path, CLIENT_REQUEST));
-            mg_http_serve_file(c, hm, buf_path, &sopts);
+            mg_http_serve_file(c, hm, node->u.file->name, buf_path, &sopts);
         } else {
             // Serve static content
 #ifdef PACKAGE_FILE

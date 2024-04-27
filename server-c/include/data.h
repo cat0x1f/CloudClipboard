@@ -68,6 +68,8 @@ void save_data();
 
 void destroy_data();
 
+data_node *find_file_node_by_id(struct mg_str *id);
+
 bool delete_node_by_index(uint32_t index);
 
 void delete_node_by_ptr(data_node *node);

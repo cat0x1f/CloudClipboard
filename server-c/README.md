@@ -36,6 +36,7 @@ cmake --build build
 - [x] 删除
 - [x] 加载配置文件
 - [x] 图片
+- [x] 视频
 - [ ] 房间
 - [ ] 密码
 - [ ] https
