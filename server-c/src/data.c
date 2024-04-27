@@ -20,8 +20,8 @@ void save_data() {
         } else if (tail->format == DATA_FORMAT_FILE) {
             if (tail->u.file->available) {
                 len += MAX_PATH + FILE_ID_LEN + 93; // file node
-                len += MAX_PATH + FILE_ID_LEN + 88; // file list
-                len += tail->u.file->thumbnail_len;
+                len += tail->u.file->thumbnail_len; // thumbnail
+                if (!tail->u.file->expire) len += MAX_PATH + FILE_ID_LEN + 88; // file list
             }
         }
         tail = tail->next;
@@ -30,10 +30,9 @@ void save_data() {
     pos += mg_snprintf(buf, len, "{\"file\":[");
     tail = head->next;
     empty = true;
-    // I don't know why we need this filed, just keep it as node-js server.
     while (tail) {
         if (tail->format == DATA_FORMAT_FILE) {
-            if (tail->u.file->available) {
+            if (tail->u.file->available && !tail->u.file->expired) {
                 pos += mg_snprintf(buf + pos, len - pos,
                                    "{\"name\":%m,\"uuid\":\"%s\",\"size\":%d,\"uploadTime\":%d,\"expireTime\":%d},",
                                    MG_ESC(tail->u.file->name), tail->u.file->id, tail->u.file->size,
@@ -58,8 +57,7 @@ void save_data() {
                                    tail->index, MG_ESC(tail->u.file->name), tail->u.file->size, tail->u.file->id,
                                    tail->u.file->expire);
                 if (tail->u.file->thumbnail_len) {
-                    pos += mg_snprintf(buf + pos, len - pos, ",\"thumbnail_len\": %d,\"thumbnail\":\"%s\"},",
-                                       tail->u.file->thumbnail_len, tail->u.file->thumbnail);
+                    pos += mg_snprintf(buf + pos, len - pos, ",\"thumbnail\":\"%s\"},", tail->u.file->thumbnail);
                 } else {
                     pos += mg_snprintf(buf + pos, len - pos, "},");
                 }
@@ -108,14 +106,14 @@ void load_data() {
             node->index = id;
             node_index = max(node_index, id + 1);
             node->next = NULL;
-            long thumbnail_len = mg_json_get_long(val, "$.thumbnail_len", 0);
+            size_t thumbnail_len = strlen(mg_json_get_str(val, "$.thumbnail"));
             node->u.file = (CacheFile *) malloc(sizeof(CacheFile) + thumbnail_len + 1);
             strncpy(node->u.file->name, name.ptr, min(name.len, MAX_PATH));
             node->u.file->name[min(name.len, MAX_PATH)] = '\0';
             strncpy(node->u.file->id, cache.ptr, min(cache.len, FILE_ID_LEN));
             node->u.file->id[min(cache.len, FILE_ID_LEN)] = '\0';
             node->u.file->available = true;
-            node->u.file->expired = false;
+            node->u.file->expired = true; // set every file to expired
             node->u.file->expire = mg_json_get_long(val, "$.expire", 0);
             node->u.file->upload = node->u.file->expire;
             node->u.file->size = mg_json_get_long(val, "$.size", 0);
@@ -127,6 +125,14 @@ void load_data() {
             }
             append_to_tail(node);
         }
+    }
+
+    while ((ofs = mg_json_next(mg_json_get_tok(json, "$.file"), ofs, NULL, &val)) > 0) {
+        struct mg_str uuid = mg_str(mg_json_get_str(val, "$.uuid"));
+        data_node * node = find_file_node_by_id(&uuid);
+        if (!node) continue;
+        node->u.file->expired = false; // set file to not expired
+        node->u.file->upload = mg_json_get_long(val, "$.uploadTime", (long) node->u.file->expire);
     }
 }
 
@@ -232,7 +238,7 @@ void check_file_expire() {
     data_node *node = head->next;
     while (node) {
         if (node->format == DATA_FORMAT_FILE) {
-            if (node->u.file->expired == 0 && node->u.file->available && node->u.file->expire < now) {
+            if (node->u.file->expired == false && node->u.file->available && node->u.file->expire < now) {
                 // expired file: only remove file
                 node->u.file->expired = true;
                 char path[MAX_PATH];
@@ -261,7 +267,7 @@ void list_data(void (*cb)(data_node *, void *), void *data) {
 
 data_node *add_text(struct mg_str *text) {
     // this check may fail, when there are cjk characters in text
-    // if (text->len > data_option->text_length) return NULL;
+     if (text->len > data_option->text_length * 4) return NULL;
     data_node *node = (data_node *) malloc(sizeof(data_node));
     node->format = DATA_FORMAT_TEXT;
     node->index = node_index++;
@@ -286,7 +292,7 @@ data_node *new_file(struct mg_str *name) {
     strncpy(node->u.file->name, name->ptr, len);
     node->u.file->name[len] = '\0';
     node->u.file->available = false;
-    node->u.file->expired = true;
+    node->u.file->expired = false;
     node->u.file->thumbnail_len = 0;
     node->u.file->upload = time(NULL);
     node->u.file->expire = node->u.file->upload + data_option->expire_time;

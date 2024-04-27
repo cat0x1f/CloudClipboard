@@ -188,7 +188,7 @@ int main(void) {
     mg_mgr_init(&mgr);
     loadConfig(&option, http_listen, &mgr);
     init_data(&option);
-    mg_timer_add(&mgr, 10000, MG_TIMER_REPEAT, timer_cb, NULL);
+    mg_timer_add(&mgr, 10000, MG_TIMER_REPEAT | MG_TIMER_RUN_NOW, timer_cb, NULL);
     while (s_sig_num == 0) {
         mg_mgr_poll(&mgr, 50);
     }
