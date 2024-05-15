@@ -4,3 +4,4 @@ config.json
 cloud-clipboard.phar
 cloud-clipboard-gz.phar
 cloud-clipboard-bz2.phar
+.DS_Store
